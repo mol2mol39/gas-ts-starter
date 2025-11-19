@@ -1,0 +1,88 @@
+# Google Apps Script (GAS) プロジェクト実装方針
+
+## 非同期処理に関する重要な制約
+
+### 基本原則
+Google Apps Scriptでは、`doPost`や`doGet`などのWebアプリエンドポイント関数は**同期関数**として実行されます。
+これらの関数内で`async/await`や`Promise.then()`を使用した非同期処理を待機することはできません。
+
+### ❌ 避けるべき実装パターン
+
+```typescript
+// これは動作しません - タイムアウトが発生します
+export const doPost = (e: GoogleAppsScript.Events.DoPost) => {
+  let result = null;
+  asyncFunction()
+    .then((res) => {
+      result = res;
+    });
+  
+  // この待機ループは正しく動作しません
+  while (result === null) {
+    Utilities.sleep(100);
+  }
+  return result;
+};
+```
+
+### ✅ 推奨される実装パターン
+
+#### 1. `UrlFetchApp.fetch()`を直接使用（同期実行）
+`UrlFetchApp.fetch()`は同期的に実行されるため、`async/await`を使わずに直接呼び出せます。
+
+```typescript
+// 正しい実装
+export const doPost = (e: GoogleAppsScript.Events.DoPost) => {
+  const response = UrlFetchApp.fetch(url, options);
+  const data = JSON.parse(response.getContentText());
+  return ContentService.createTextOutput(JSON.stringify(data));
+};
+```
+
+#### 2. 非同期関数を同期的に実行する必要がある場合
+`doPost`や`doGet`内では、非同期関数を呼び出すのではなく、その内部ロジックを同期的に実装します。
+
+```typescript
+// ❌ 避ける
+export const doPost = (e: GoogleAppsScript.Events.DoPost) => {
+  const result = await someAsyncFunction(); // これは動作しない
+};
+
+// ✅ 推奨
+export const doPost = (e: GoogleAppsScript.Events.DoPost) => {
+  // 非同期関数の内部ロジックを同期的に実装
+  const response = UrlFetchApp.fetch(url, options);
+  const data = JSON.parse(response.getContentText());
+  return data;
+};
+```
+
+### 実装ガイドライン
+
+1. **Webアプリエンドポイント（`doPost`、`doGet`）**
+   - 必ず同期関数として実装
+   - `UrlFetchApp.fetch()`を直接使用
+   - `async/await`や`Promise`の待機処理は使用しない
+
+2. **通常の関数（`stopCurrentAndStartNew`など）**
+   - `async/await`を使用可能（エディタ上での実行やトリガー実行時）
+   - ただし、Webアプリから呼び出す場合は同期的な実装を用意
+
+3. **APIリクエスト**
+   - `UrlFetchApp.fetch()`は同期的に実行される
+   - `async/await`でラップする必要はない（ただし、通常の関数内では使用可能）
+
+### チェックリスト
+
+新しいWebアプリエンドポイントを実装する際は、以下を確認してください：
+
+- [ ] `doPost`/`doGet`は`async`キーワードを使用していないか
+- [ ] `Promise.then()`や`Utilities.sleep()`を使った待機処理がないか
+- [ ] `UrlFetchApp.fetch()`を直接呼び出しているか
+- [ ] 非同期関数を呼び出す代わりに、同期的な実装になっているか
+
+### 参考実装
+
+プロジェクト内の`src/App.ts`の`doPost`関数を参照してください。
+この実装では、`togglRequest`ヘルパー関数を使用して、すべてのAPIリクエストを同期的に実行しています。
+
