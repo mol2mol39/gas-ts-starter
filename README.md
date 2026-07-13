@@ -25,7 +25,7 @@ gas-ts/
 │   └── appsscript.json  # GAS の設定ファイル
 ├── esbuild.js           # esbuild の設定
 ├── tsconfig.json        # TypeScript の設定
-├── .clasp.json          # clasp の設定
+├── .clasp.json          # clasp の設定（自動生成・Git管理外）
 └── package.json         # 依存関係とスクリプト
 ```
 
@@ -39,16 +39,19 @@ npm install
 
 ### 2. Google Apps Script プロジェクトの作成と clasp の設定
 
-1. [Google Apps Script](https://script.google.com/) で新しいプロジェクトを作成
-2. プロジェクトのスクリプト ID を取得
-3. `.clasp.json` の `scriptId` を更新
+`clasp` コマンドを使用して新しいプロジェクトを作成します（この操作により自動的に `.clasp.json` が生成されます）。ビルドされたファイルのみをデプロイするため、必ず `--rootDir ./dist` を付与してください。
 
-```json
-{
-  "scriptId": "YOUR_SCRIPT_ID_HERE",
-  ...
-}
+スタンドアロンプロジェクトを作成する場合：
+```bash
+clasp create --type standalone --title "プロジェクト名" --rootDir ./dist
 ```
+
+スプレッドシートに紐づけるプロジェクトを作成する場合：
+```bash
+clasp create --type sheets --title "プロジェクト名" --rootDir ./dist
+```
+
+> **💡 Tips**: Antigravity CLIなどのAIエージェントをご利用の場合は、ご自身の環境に `gas-project-setup` スキルを登録しておくことで、リポジトリの作成から初期デプロイまでを対話形式で全自動化できます。
 
 ### 3. clasp のログイン（初回のみ）
 
@@ -98,8 +101,8 @@ npm run push   # プッシュ
 
 ## 注意事項
 
-- `.clasp.json` にはスクリプト ID が含まれるため、コミット前に機密情報が含まれていないか確認してください
-- `package-lock.json` は `.gitignore` に含まれています
+- `.clasp.json` にはスクリプト ID が含まれるため、`.gitignore` に登録されておりリポジトリにはコミットされません。
+- `package-lock.json` も `.gitignore` に含まれています。
 
 ## ライセンス
 
